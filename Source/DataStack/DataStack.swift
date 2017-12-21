@@ -36,6 +36,7 @@ import CoreData
         context.undoManager = nil
         context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
         context.persistentStoreCoordinator = self.persistentStoreCoordinator
+        context.automaticallyMergesChangesFromParent = true
 
         NotificationCenter.default.addObserver(self, selector: #selector(DataStack.mainContextDidSave(_:)), name: .NSManagedObjectContextDidSave, object: context)
 
@@ -55,6 +56,7 @@ import CoreData
         context.undoManager = nil
         context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
         context.persistentStoreCoordinator = self.persistentStoreCoordinator
+        context.automaticallyMergesChangesFromParent = true
 
         return context
     }()
@@ -223,6 +225,7 @@ import CoreData
         context.persistentStoreCoordinator = self.persistentStoreCoordinator
         context.undoManager = nil
         context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
+        context.automaticallyMergesChangesFromParent = true
 
         return context
     }
@@ -235,6 +238,7 @@ import CoreData
         context.persistentStoreCoordinator = self.persistentStoreCoordinator
         context.undoManager = nil
         context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
+        context.automaticallyMergesChangesFromParent = true
 
         NotificationCenter.default.addObserver(self, selector: #selector(DataStack.backgroundContextDidSave(_:)), name: .NSManagedObjectContextDidSave, object: context)
 
@@ -247,6 +251,7 @@ import CoreData
      */
     @objc public func performInNewBackgroundContext(_ operation: @escaping (_ backgroundContext: NSManagedObjectContext) -> Void) {
         let context = self.newBackgroundContext()
+        context.automaticallyMergesChangesFromParent = true
         let contextBlock: @convention(block) () -> Void = {
             operation(context)
         }
