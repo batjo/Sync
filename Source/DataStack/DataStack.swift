@@ -64,10 +64,10 @@ import CoreData
             managedObjectContext.parent = self.privateQueueContext
             managedObjectContext.automaticallyMergesChangesFromParent = true
 
-            NotificationCenter.default.addObserver(self,
-                                                   selector: #selector(DataStack.contextDidSaveNotification(_:)),
-                                                   name: NSNotification.Name.NSManagedObjectContextDidSave,
-                                                   object: managedObjectContext)
+//            NotificationCenter.default.addObserver(self,
+//                                                   selector: #selector(DataStack.contextDidSaveNotification(_:)),
+//                                                   name: NSNotification.Name.NSManagedObjectContextDidSave,
+//                                                   object: managedObjectContext)
         }
         // Always create the main-queue ManagedObjectContext on the main queue.
         if !Thread.isMainThread {
@@ -251,22 +251,22 @@ import CoreData
         return moc
     }
 
-    /**
-     Returns a background context perfect for data mutability operations.
-     - parameter operation: The block that contains the created background context.
-     */
-    @objc public func performInNewBackgroundContext(_ operation: @escaping (_ backgroundContext: NSManagedObjectContext) -> Void) {
-        let context = self.mainContext
-        let contextBlock: @convention(block) () -> Void = {
-            operation(context)
-        }
-        let blockObject: AnyObject = unsafeBitCast(contextBlock, to: AnyObject.self)
-        context.perform(DataStack.performSelectorForBackgroundContext(), with: blockObject)
-    }
-
-    private static func performSelectorForBackgroundContext() -> Selector {
-        return TestCheck.isTesting ? NSSelectorFromString("performBlockAndWait:") : NSSelectorFromString("performBlock:")
-    }
+//    /**
+//     Returns a background context perfect for data mutability operations.
+//     - parameter operation: The block that contains the created background context.
+//     */
+//    @objc public func performInNewBackgroundContext(_ operation: @escaping (_ backgroundContext: NSManagedObjectContext) -> Void) {
+//        let context = self.mainContext
+//        let contextBlock: @convention(block) () -> Void = {
+//            operation(context)
+//        }
+//        let blockObject: AnyObject = unsafeBitCast(contextBlock, to: AnyObject.self)
+//        context.perform(DataStack.performSelectorForBackgroundContext(), with: blockObject)
+//    }
+//
+//    private static func performSelectorForBackgroundContext() -> Selector {
+//        return TestCheck.isTesting ? NSSelectorFromString("performBlockAndWait:") : NSSelectorFromString("performBlock:")
+//    }
 
     // Drops the database.
     @objc public func drop(completion: ((_ error: NSError?) -> Void)? = nil) {
