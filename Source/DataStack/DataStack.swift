@@ -27,21 +27,58 @@ import CoreData
 
     private var containerURL = URL.directoryURL()
 
+    fileprivate let saveBubbleDispatchGroup = DispatchGroup()
+
     /**
-     The context for the main queue. Please do not use this to mutate data, use `performInNewBackgroundContext`
-     instead.
+     Primary persisting background managed object context. This is the top level context that possess an
+     `NSPersistentStoreCoordinator` and saves changes to disk on a background queue.
+
+     Fetching, Inserting, Deleting or Updating managed objects should occur on a child of this context rather than directly.
+
+     note: `NSBatchUpdateRequest` and `NSAsynchronousFetchRequest` require a context with a persistent store connected directly.
      */
-    @objc public lazy var mainContext: NSManagedObjectContext = {
-        let context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-        context.undoManager = nil
-        context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
-        context.persistentStoreCoordinator = self.persistentStoreCoordinator
-        context.automaticallyMergesChangesFromParent = true
-
-        NotificationCenter.default.addObserver(self, selector: #selector(DataStack.mainContextDidSave(_:)), name: .NSManagedObjectContextDidSave, object: context)
-
-        return context
+    public private(set) lazy var privateQueueContext: NSManagedObjectContext = {
+        return self.constructPersistingContext()
     }()
+    private func constructPersistingContext() -> NSManagedObjectContext {
+        let managedObjectContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        managedObjectContext.mergePolicy = NSMergePolicy(merge: .mergeByPropertyStoreTrumpMergePolicyType)
+        managedObjectContext.name = "Primary Private Queue Context (Persisting Context)"
+        managedObjectContext.persistentStoreCoordinator = self.persistentStoreCoordinator
+        return managedObjectContext
+    }
+
+    /**
+     The main queue context for any work that will be performed on the main queue.
+     Its parent context is the primary private queue context that persist the data to disk.
+     Making a `save()` call on this context will automatically trigger a save on its parent via `NSNotification`.
+     */
+    @objc public private(set) lazy var mainContext: NSManagedObjectContext = {
+        return self.constructMainContext()
+    }()
+    private func constructMainContext() -> NSManagedObjectContext {
+        var managedObjectContext: NSManagedObjectContext!
+        let setup: () -> Void = {
+            managedObjectContext = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+            managedObjectContext.mergePolicy = NSMergePolicy(merge: .mergeByPropertyStoreTrumpMergePolicyType)
+            managedObjectContext.parent = self.privateQueueContext
+            managedObjectContext.automaticallyMergesChangesFromParent = true
+
+            NotificationCenter.default.addObserver(self,
+                                                   selector: #selector(DataStack.contextDidSaveNotification(_:)),
+                                                   name: NSNotification.Name.NSManagedObjectContextDidSave,
+                                                   object: managedObjectContext)
+        }
+        // Always create the main-queue ManagedObjectContext on the main queue.
+        if !Thread.isMainThread {
+            DispatchQueue.main.sync {
+                setup()
+            }
+        } else {
+            setup()
+        }
+        return managedObjectContext
+    }
 
     /**
      The context for the main queue. Please do not use this to mutate data, use `performBackgroundTask`
@@ -51,27 +88,9 @@ import CoreData
         return self.mainContext
     }
 
-    private lazy var writerContext: NSManagedObjectContext = {
-        let context = NSManagedObjectContext(concurrencyType: DataStack.backgroundConcurrencyType())
-        context.undoManager = nil
-        context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
-        context.persistentStoreCoordinator = self.persistentStoreCoordinator
-        context.automaticallyMergesChangesFromParent = true
-
-        return context
-    }()
-
     @objc public private(set) lazy var persistentStoreCoordinator: NSPersistentStoreCoordinator = {
         let persistentStoreCoordinator = NSPersistentStoreCoordinator(managedObjectModel: self.model)
         try! persistentStoreCoordinator.addPersistentStore(storeType: self.storeType, bundle: self.modelBundle, modelName: self.modelName, storeName: self.storeName, containerURL: self.containerURL)
-
-        return persistentStoreCoordinator
-    }()
-
-    private lazy var disposablePersistentStoreCoordinator: NSPersistentStoreCoordinator = {
-        let model = NSManagedObjectModel(bundle: self.modelBundle, name: self.modelName)
-        let persistentStoreCoordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
-        try! persistentStoreCoordinator.addPersistentStore(storeType: .inMemory, bundle: self.modelBundle, modelName: self.modelName, storeName: self.storeName, containerURL: self.containerURL)
 
         return persistentStoreCoordinator
     }()
@@ -198,51 +217,37 @@ import CoreData
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self, name: .NSManagedObjectContextWillSave, object: nil)
-        NotificationCenter.default.removeObserver(self, name: .NSManagedObjectContextDidSave, object: nil)
+        NotificationCenter.default.removeObserver(self)
     }
 
     /**
-     Returns a new main context that is detached from saving to disk.
+     Returns a new `NSManagedObjectContext` as a child of the main queue context.
+
+     Calling `save()` on this managed object context will automatically trigger a save on its parent context via `NSNotification` observing.
+
+     - parameter type: The NSManagedObjectContextConcurrencyType of the new context.
+     **Note** this function will trap on a preconditionFailure if you attempt to create a MainQueueConcurrencyType context from a background thread.
+     Default value is .PrivateQueueConcurrencyType
+     - parameter name: A name for the new context for debugging purposes. Defaults to *Main Queue Context Child*
+
+     - returns: `NSManagedObjectContext` The new worker context.
      */
-    @objc public func newDisposableMainContext() -> NSManagedObjectContext {
-        let context = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
-        context.persistentStoreCoordinator = self.disposablePersistentStoreCoordinator
-        context.undoManager = nil
+    public func newChildContext(type: NSManagedObjectContextConcurrencyType = .privateQueueConcurrencyType,
+                                name: String? = "Main Queue Context Child") -> NSManagedObjectContext {
+        if type == .mainQueueConcurrencyType && !Thread.isMainThread {
+            preconditionFailure("Main thread MOCs must be created on the main thread")
+        }
 
-        NotificationCenter.default.addObserver(self, selector: #selector(DataStack.newDisposableMainContextWillSave(_:)), name: NSNotification.Name.NSManagedObjectContextWillSave, object: context)
+        let moc = NSManagedObjectContext(concurrencyType: type)
+        moc.mergePolicy = NSMergePolicy(merge: .mergeByPropertyStoreTrumpMergePolicyType)
+        moc.parent = mainContext
+        moc.name = name
 
-        return context
-    }
-
-    /**
-     Returns a background context perfect for data mutability operations. Make sure to never use it on the main thread. Use `performBlock` or `performBlockAndWait` to use it.
-     Saving to this context doesn't merge with the main thread. This context is specially useful to run operations that don't block the main thread. To refresh your main thread objects for
-     example when using a NSFetchedResultsController use `try self.fetchedResultsController.performFetch()`.
-     */
-    @objc public func newNonMergingBackgroundContext() -> NSManagedObjectContext {
-        let context = NSManagedObjectContext(concurrencyType: DataStack.backgroundConcurrencyType())
-        context.persistentStoreCoordinator = self.persistentStoreCoordinator
-        context.undoManager = nil
-        context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
-        context.automaticallyMergesChangesFromParent = true
-
-        return context
-    }
-
-    /**
-     Returns a background context perfect for data mutability operations. Make sure to never use it on the main thread. Use `performBlock` or `performBlockAndWait` to use it.
-     */
-    @objc public func newBackgroundContext() -> NSManagedObjectContext {
-        let context = NSManagedObjectContext(concurrencyType: DataStack.backgroundConcurrencyType())
-        context.persistentStoreCoordinator = self.persistentStoreCoordinator
-        context.undoManager = nil
-        context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
-        context.automaticallyMergesChangesFromParent = true
-
-        NotificationCenter.default.addObserver(self, selector: #selector(DataStack.backgroundContextDidSave(_:)), name: .NSManagedObjectContextDidSave, object: context)
-
-        return context
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(contextDidSaveNotification(_:)),
+                                               name: NSNotification.Name.NSManagedObjectContextDidSave,
+                                               object: moc)
+        return moc
     }
 
     /**
@@ -250,8 +255,7 @@ import CoreData
      - parameter operation: The block that contains the created background context.
      */
     @objc public func performInNewBackgroundContext(_ operation: @escaping (_ backgroundContext: NSManagedObjectContext) -> Void) {
-        let context = self.newBackgroundContext()
-        context.automaticallyMergesChangesFromParent = true
+        let context = self.mainContext
         let contextBlock: @convention(block) () -> Void = {
             operation(context)
         }
@@ -259,55 +263,23 @@ import CoreData
         context.perform(DataStack.performSelectorForBackgroundContext(), with: blockObject)
     }
 
-    /**
-     Returns a background context perfect for data mutability operations.
-     - parameter operation: The block that contains the created background context.
-     */
-    @objc public func performBackgroundTask(operation: @escaping (_ backgroundContext: NSManagedObjectContext) -> Void) {
-        self.performInNewBackgroundContext(operation)
-    }
-
-    func saveMainThread(completion: ((_ error: NSError?) -> Void)?) {
-        var writerContextError: NSError?
-        let writerContextBlock: @convention(block) () -> Void = {
-            do {
-                try self.writerContext.save()
-                if TestCheck.isTesting {
-                    completion?(nil)
-                }
-            } catch let parentError as NSError {
-                writerContextError = parentError
-            }
-        }
-        let writerContextBlockObject: AnyObject = unsafeBitCast(writerContextBlock, to: AnyObject.self)
-
-        let mainContextBlock: @convention(block) () -> Void = {
-            self.writerContext.perform(DataStack.performSelectorForBackgroundContext(), with: writerContextBlockObject)
-            DispatchQueue.main.async {
-                completion?(writerContextError)
-            }
-        }
-        let mainContextBlockObject: AnyObject = unsafeBitCast(mainContextBlock, to: AnyObject.self)
-        self.mainContext.perform(DataStack.performSelectorForBackgroundContext(), with: mainContextBlockObject)
+    private static func performSelectorForBackgroundContext() -> Selector {
+        return TestCheck.isTesting ? NSSelectorFromString("performBlockAndWait:") : NSSelectorFromString("performBlock:")
     }
 
     // Drops the database.
     @objc public func drop(completion: ((_ error: NSError?) -> Void)? = nil) {
-        self.writerContext.performAndWait {
-            self.writerContext.reset()
+        self.mainContext.performAndWait {
+            self.mainContext.reset()
 
-            self.mainContext.performAndWait {
-                self.mainContext.reset()
+            self.persistentStoreCoordinator.performAndWait {
+                for store in self.persistentStoreCoordinator.persistentStores {
+                    guard let storeURL = store.url else { continue }
+                    try! self.oldDrop(storeURL: storeURL)
+                }
 
-                self.persistentStoreCoordinator.performAndWait {
-                    for store in self.persistentStoreCoordinator.persistentStores {
-                        guard let storeURL = store.url else { continue }
-                        try! self.oldDrop(storeURL: storeURL)
-                    }
-
-                    DispatchQueue.main.async {
-                        completion?(nil)
-                    }
+                DispatchQueue.main.async {
+                    completion?(nil)
                 }
             }
         }
@@ -319,7 +291,6 @@ import CoreData
         let sqliteFile = (storePath as NSString).deletingPathExtension
         let fileManager = FileManager.default
 
-        self.writerContext.reset()
         self.mainContext.reset()
 
         let shm = sqliteFile + ".sqlite-shm"
@@ -360,41 +331,22 @@ import CoreData
         return try self.persistentStoreCoordinator.execute(request, with: context)
     }
 
-    // Can't be private, has to be internal in order to be used as a selector.
-    @objc func mainContextDidSave(_ notification: Notification) {
-        self.saveMainThread { error in
-            if let error = error {
-                fatalError("Failed to save objects in main thread: \(error)")
-            }
+}
+
+fileprivate extension DataStack {
+    @objc fileprivate func contextDidSaveNotification(_ notification: Notification) {
+        guard let notificationMOC = notification.object as? NSManagedObjectContext else {
+            assertionFailure("Notification posted from an object other than an NSManagedObjectContext")
+            return
         }
-    }
-
-    // Can't be private, has to be internal in order to be used as a selector.
-    @objc func newDisposableMainContextWillSave(_ notification: Notification) {
-        if let context = notification.object as? NSManagedObjectContext {
-            context.reset()
+        guard let parentContext = notificationMOC.parent else {
+            return
         }
-    }
 
-    // Can't be private, has to be internal in order to be used as a selector.
-    @objc func backgroundContextDidSave(_ notification: Notification) throws {
-        if Thread.isMainThread && TestCheck.isTesting == false {
-            throw NSError(info: "Background context saved in the main thread. Use context's `performBlock`", previousError: nil)
-        } else {
-            let contextBlock: @convention(block) () -> Void = {
-                self.mainContext.mergeChanges(fromContextDidSave: notification)
-            }
-            let blockObject: AnyObject = unsafeBitCast(contextBlock, to: AnyObject.self)
-            self.mainContext.perform(DataStack.performSelectorForBackgroundContext(), with: blockObject)
+        saveBubbleDispatchGroup.enter()
+        parentContext.saveContext() { _ in
+            self.saveBubbleDispatchGroup.leave()
         }
-    }
-
-    private static func backgroundConcurrencyType() -> NSManagedObjectContextConcurrencyType {
-        return TestCheck.isTesting ? .mainQueueConcurrencyType : .privateQueueConcurrencyType
-    }
-
-    private static func performSelectorForBackgroundContext() -> Selector {
-        return TestCheck.isTesting ? NSSelectorFromString("performBlockAndWait:") : NSSelectorFromString("performBlock:")
     }
 }
 
@@ -497,3 +449,40 @@ extension URL {
         #endif
     }
 }
+
+extension DataStack {
+
+    // MARK: - Operation Result Types
+
+    /// Result containing either an instance of `NSPersistentStoreCoordinator` or `ErrorType`
+    public enum CoordinatorResult {
+        /// A success case with associated `NSPersistentStoreCoordinator` instance
+        case success(NSPersistentStoreCoordinator)
+        /// A failure case with associated `ErrorType` instance
+        case failure(Swift.Error)
+    }
+    /// Result containing either an instance of `NSManagedObjectContext` or `ErrorType`
+    public enum BatchContextResult {
+        /// A success case with associated `NSManagedObjectContext` instance
+        case success(NSManagedObjectContext)
+        /// A failure case with associated `ErrorType` instance
+        case failure(Swift.Error)
+    }
+    /// Result containing either an instance of `CoreDataStack` or `ErrorType`
+    public enum SetupResult {
+        /// A success case with associated `CoreDataStack` instance
+        case success(DataStack)
+        /// A failure case with associated `ErrorType` instance
+        case failure(Swift.Error)
+    }
+    /// Result of void representing `success` or an instance of `ErrorType`
+    public enum SuccessResult {
+        /// A success case
+        case success
+        /// A failure case with associated ErrorType instance
+        case failure(Swift.Error)
+    }
+    public typealias SaveResult = SuccessResult
+    public typealias ResetResult = SuccessResult
+}
+

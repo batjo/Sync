@@ -93,9 +93,7 @@ public protocol SyncDelegate: class {
                     self.perform(using: context)
                 }
             } else {
-                self.dataStack.performInNewBackgroundContext { backgroundContext in
-                    self.perform(using: backgroundContext)
-                }
+                self.perform(using: self.dataStack.mainContext)
             }
         }
     }

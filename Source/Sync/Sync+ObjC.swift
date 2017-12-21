@@ -67,8 +67,6 @@ public extension Sync {
      - parameter completion: The completion block, it returns an error if something in the Sync process goes wrong.
      */
     public class func compatibleChanges(_ changes: [[String: Any]], inEntityNamed entityName: String, predicate: NSPredicate?, dataStack: DataStack, operations: CompatibleOperationOptions, completion: ((_ error: NSError?) -> Void)?) {
-        dataStack.performInNewBackgroundContext { backgroundContext in
-            self.changes(changes, inEntityNamed: entityName, predicate: predicate, dataStack: dataStack, operations: operations.operationOptions, completion: completion)
-        }
+        self.changes(changes, inEntityNamed: entityName, predicate: predicate, dataStack: dataStack, operations: operations.operationOptions, completion: completion)
     }
 }

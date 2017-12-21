@@ -82,22 +82,22 @@ class Tests: XCTestCase {
         XCTAssertEqual(objects.count, 1)
     }
 
-    func testNewBackgroundContextSave() {
-        var synchronous = false
-        let dataStack = self.createDataStack()
-        let backgroundContext = dataStack.newBackgroundContext()
-        backgroundContext.performAndWait {
-            synchronous = true
-            self.insertUser(in: backgroundContext)
-            let objects = self.fetch(in: backgroundContext)
-            XCTAssertEqual(objects.count, 1)
-        }
-
-        let objects = self.fetch(in: dataStack.mainContext)
-        XCTAssertEqual(objects.count, 1)
-
-        XCTAssertTrue(synchronous)
-    }
+//    func testNewBackgroundContextSave() {
+//        var synchronous = false
+//        let dataStack = self.createDataStack()
+//        let backgroundContext = dataStack.newBackgroundContext()
+//        backgroundContext.performAndWait {
+//            synchronous = true
+//            self.insertUser(in: backgroundContext)
+//            let objects = self.fetch(in: backgroundContext)
+//            XCTAssertEqual(objects.count, 1)
+//        }
+//
+//        let objects = self.fetch(in: dataStack.mainContext)
+//        XCTAssertEqual(objects.count, 1)
+//
+//        XCTAssertTrue(synchronous)
+//    }
 
     func testRequestWithDictionaryResultType() {
         let dataStack = self.createDataStack()
@@ -120,14 +120,14 @@ class Tests: XCTestCase {
         XCTAssertEqual(dictionaryObjects.count, 1)
     }
 
-    func testDisposableContextSave() {
-        let dataStack = self.createDataStack()
-
-        let disposableContext = dataStack.newDisposableMainContext()
-        self.insertUser(in: disposableContext)
-        let objects = self.fetch(in: disposableContext)
-        XCTAssertEqual(objects.count, 0)
-    }
+//    func testDisposableContextSave() {
+//        let dataStack = self.createDataStack()
+//
+//        let disposableContext = dataStack.newDisposableMainContext()
+//        self.insertUser(in: disposableContext)
+//        let objects = self.fetch(in: disposableContext)
+//        XCTAssertEqual(objects.count, 0)
+//    }
 
     func testDrop() {
         let dataStack = self.createDataStack(.sqLite)

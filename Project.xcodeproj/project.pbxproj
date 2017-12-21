@@ -641,6 +641,10 @@
 		CC9494181F379BE1002167B4 /* 373.json in Resources */ = {isa = PBXBuildFile; fileRef = CC9494171F379BE1002167B4 /* 373.json */; };
 		CC9494191F379BE1002167B4 /* 373.json in Resources */ = {isa = PBXBuildFile; fileRef = CC9494171F379BE1002167B4 /* 373.json */; };
 		CC94941A1F379BE1002167B4 /* 373.json in Resources */ = {isa = PBXBuildFile; fileRef = CC9494171F379BE1002167B4 /* 373.json */; };
+		CCDA951B1FEC06D9008613AC /* NSManagedObjectContext+DataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDA95191FEC06CB008613AC /* NSManagedObjectContext+DataStack.swift */; };
+		CCDA951C1FEC06D9008613AC /* NSManagedObjectContext+DataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDA95191FEC06CB008613AC /* NSManagedObjectContext+DataStack.swift */; };
+		CCDA951D1FEC06DA008613AC /* NSManagedObjectContext+DataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDA95191FEC06CB008613AC /* NSManagedObjectContext+DataStack.swift */; };
+		CCDA951E1FEC06DA008613AC /* NSManagedObjectContext+DataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCDA95191FEC06CB008613AC /* NSManagedObjectContext+DataStack.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -912,6 +916,7 @@
 		CC94940F1F37857F002167B4 /* 375-to-many-speeches.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "375-to-many-speeches.json"; sourceTree = "<group>"; };
 		CC9494131F379401002167B4 /* 375-to-one-speeches.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "375-to-one-speeches.json"; sourceTree = "<group>"; };
 		CC9494171F379BE1002167B4 /* 373.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = 373.json; sourceTree = "<group>"; };
+		CCDA95191FEC06CB008613AC /* NSManagedObjectContext+DataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSManagedObjectContext+DataStack.swift"; sourceTree = "<group>"; };
 		E47FF6201F0002A3004A923A /* Sync+ObjC.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Sync+ObjC.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -991,6 +996,7 @@
 			isa = PBXGroup;
 			children = (
 				1467388B1E7ADBA700913C8E /* DataStack.swift */,
+				CCDA95191FEC06CB008613AC /* NSManagedObjectContext+DataStack.swift */,
 			);
 			path = DataStack;
 			sourceTree = "<group>";
@@ -2013,6 +2019,7 @@
 				4474093F1E87BA4E0035B8DC /* PropertyMapper.m in Sources */,
 				142CD2A81DEF39AE002FDABE /* Sync+DataStack.swift in Sources */,
 				1467388C1E7ADBA700913C8E /* DataStack.swift in Sources */,
+				CCDA951B1FEC06D9008613AC /* NSManagedObjectContext+DataStack.swift in Sources */,
 				445851F81E87BB590025434E /* NSEntityDescription+PrimaryKey.m in Sources */,
 				14D93C131E4E65C700DED595 /* NSDate+PropertyMapper.m in Sources */,
 			);
@@ -2041,6 +2048,7 @@
 				14D93C141E4E65C700DED595 /* NSDate+PropertyMapper.m in Sources */,
 				14241EAD1DBC3A770042ED81 /* DataFilter.swift in Sources */,
 				14241EAF1DBC3A770042ED81 /* TestCheck.swift in Sources */,
+				CCDA951E1FEC06DA008613AC /* NSManagedObjectContext+DataStack.swift in Sources */,
 				445851FB1E87BB590025434E /* NSEntityDescription+PrimaryKey.m in Sources */,
 				142CD2A91DEF39AE002FDABE /* Sync+DataStack.swift in Sources */,
 			);
@@ -2069,6 +2077,7 @@
 				14D93C151E4E65C700DED595 /* NSDate+PropertyMapper.m in Sources */,
 				14241EB51DBC3A7F0042ED81 /* DataFilter.swift in Sources */,
 				14241EB71DBC3A7F0042ED81 /* TestCheck.swift in Sources */,
+				CCDA951C1FEC06D9008613AC /* NSManagedObjectContext+DataStack.swift in Sources */,
 				445851F91E87BB590025434E /* NSEntityDescription+PrimaryKey.m in Sources */,
 				142CD2AA1DEF39AE002FDABE /* Sync+DataStack.swift in Sources */,
 			);
@@ -2097,6 +2106,7 @@
 				14D93C161E4E65C700DED595 /* NSDate+PropertyMapper.m in Sources */,
 				14241EBD1DBC3A880042ED81 /* DataFilter.swift in Sources */,
 				14241EBF1DBC3A880042ED81 /* TestCheck.swift in Sources */,
+				CCDA951D1FEC06DA008613AC /* NSManagedObjectContext+DataStack.swift in Sources */,
 				445851FA1E87BB590025434E /* NSEntityDescription+PrimaryKey.m in Sources */,
 				142CD2AB1DEF39AE002FDABE /* Sync+DataStack.swift in Sources */,
 			);
