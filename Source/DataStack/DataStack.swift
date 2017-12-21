@@ -258,7 +258,7 @@ import CoreData
         let moc = NSManagedObjectContext(concurrencyType: type)
         moc.mergePolicy = NSMergePolicy(merge: .mergeByPropertyStoreTrumpMergePolicyType)
         moc.parent = mainContext
-        moc.automaticallyMergesChangesFromParent = true
+        //moc.automaticallyMergesChangesFromParent = true
         moc.name = name
 
         NotificationCenter.default.addObserver(self,
