@@ -37,7 +37,9 @@ public extension DataStack {
     ///   - predicate: The predicate used to filter out changes, if you want to exclude some local items to be taken in account in the Sync process, you just need to provide this predicate.
     ///   - completion: The completion block, it returns an error if something in the Sync process goes wrong.
     public func sync(_ changes: [[String: Any]], inEntityNamed entityName: String, predicate: NSPredicate?, completion: ((_ error: NSError?) -> Void)?) {
-        Sync.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: nil, parentRelationship: nil, inContext: self.mainContext, operations: .all, completion: completion)
+        self.performInNewBackgroundContext { backgroundContext in
+            Sync.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: nil, parentRelationship: nil, inContext: backgroundContext, operations: .all, completion: completion)
+        }
     }
 
     /// Syncs the entity using the received array of dictionaries, maps one-to-many, many-to-many and one-to-one relationships.
@@ -52,7 +54,9 @@ public extension DataStack {
     ///   - operations: The type of operations to be applied to the data, Insert, Update, Delete or any possible combination.
     ///   - completion: The completion block, it returns an error if something in the Sync process goes wrong.
     public func sync(_ changes: [[String: Any]], inEntityNamed entityName: String, predicate: NSPredicate?, operations: Sync.OperationOptions, completion: ((_ error: NSError?) -> Void)?) {
-        Sync.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: nil, parentRelationship: nil, inContext: self.mainContext, operations: operations, completion: completion)
+        self.performInNewBackgroundContext { backgroundContext in
+            Sync.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: nil, parentRelationship: nil, inContext: backgroundContext, operations: operations, completion: completion)
+        }
     }
 
     /// Syncs the entity using the received array of dictionaries, maps one-to-many, many-to-many and one-to-one relationships.
@@ -68,16 +72,18 @@ public extension DataStack {
     /// you to send the parent album to do the proper mapping.
     ///   - completion: The completion block, it returns an error if something in the Sync process goes wrong.
     public func sync(_ changes: [[String: Any]], inEntityNamed entityName: String, parent: NSManagedObject, completion: ((_ error: NSError?) -> Void)?) {
-        let safeParent = parent.sync_copyInContext(self.mainContext)
-        guard let entity = NSEntityDescription.entity(forEntityName: entityName, in: self.mainContext) else { fatalError("Couldn't find entity named: \(entityName)") }
-        let relationships = entity.relationships(forDestination: parent.entity)
-        var predicate: NSPredicate?
-        let firstRelationship = relationships.first
+        self.performInNewBackgroundContext { backgroundContext in
+            let safeParent = parent.sync_copyInContext(backgroundContext)
+            guard let entity = NSEntityDescription.entity(forEntityName: entityName, in: backgroundContext) else { fatalError("Couldn't find entity named: \(entityName)") }
+            let relationships = entity.relationships(forDestination: parent.entity)
+            var predicate: NSPredicate?
+            let firstRelationship = relationships.first
 
-        if let firstRelationship = firstRelationship {
-            predicate = NSPredicate(format: "%K = %@", firstRelationship.name, safeParent)
+            if let firstRelationship = firstRelationship {
+                predicate = NSPredicate(format: "%K = %@", firstRelationship.name, safeParent)
+            }
+            Sync.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: safeParent, parentRelationship: firstRelationship?.inverseRelationship, inContext: backgroundContext, operations: .all, completion: completion)
         }
-        Sync.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: safeParent, parentRelationship: firstRelationship?.inverseRelationship, inContext: self.mainContext, operations: .all, completion: completion)
     }
 
     /// Fetches a managed object for the provided primary key in an specific entity.
@@ -179,7 +185,9 @@ public extension Sync {
      - parameter completion: The completion block, it returns an error if something in the Sync process goes wrong.
      */
     public class func changes(_ changes: [[String: Any]], inEntityNamed entityName: String, predicate: NSPredicate?, dataStack: DataStack, completion: ((_ error: NSError?) -> Void)?) {
-        self.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: nil, parentRelationship: nil, inContext: dataStack.mainContext, operations: .all, completion: completion)
+        dataStack.performInNewBackgroundContext { backgroundContext in
+            self.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: nil, parentRelationship: nil, inContext: backgroundContext, operations: .all, completion: completion)
+        }
     }
 
     /**
@@ -196,7 +204,9 @@ public extension Sync {
      - parameter completion: The completion block, it returns an error if something in the Sync process goes wrong.
      */
     public class func changes(_ changes: [[String: Any]], inEntityNamed entityName: String, predicate: NSPredicate?, dataStack: DataStack, operations: Sync.OperationOptions, completion: ((_ error: NSError?) -> Void)?) {
-        self.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: nil, parentRelationship: nil, inContext: dataStack.mainContext, operations: operations, completion: completion)
+        dataStack.performInNewBackgroundContext { backgroundContext in
+            self.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: nil, parentRelationship: nil, inContext: backgroundContext, operations: operations, completion: completion)
+        }
     }
 
     /**
@@ -213,15 +223,18 @@ public extension Sync {
      - parameter completion: The completion block, it returns an error if something in the Sync process goes wrong.
      */
     public class func changes(_ changes: [[String: Any]], inEntityNamed entityName: String, parent: NSManagedObject, dataStack: DataStack, completion: ((_ error: NSError?) -> Void)?) {
-        let safeParent = parent.sync_copyInContext(dataStack.mainContext)
-        guard let entity = NSEntityDescription.entity(forEntityName: entityName, in: dataStack.mainContext) else { fatalError("Couldn't find entity named: \(entityName)") }
-        let relationships = entity.relationships(forDestination: parent.entity)
-        var predicate: NSPredicate?
-        let firstRelationship = relationships.first
+        dataStack.performInNewBackgroundContext { backgroundContext in
+            let safeParent = parent.sync_copyInContext(backgroundContext)
+            guard let entity = NSEntityDescription.entity(forEntityName: entityName, in: backgroundContext) else { fatalError("Couldn't find entity named: \(entityName)") }
+            let relationships = entity.relationships(forDestination: parent.entity)
+            var predicate: NSPredicate?
+            let firstRelationship = relationships.first
 
-        if let firstRelationship = firstRelationship {
-            predicate = NSPredicate(format: "%K = %@", firstRelationship.name, safeParent)
+            if let firstRelationship = firstRelationship {
+                predicate = NSPredicate(format: "%K = %@", firstRelationship.name, safeParent)
+            }
+            self.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: safeParent, parentRelationship: firstRelationship?.inverseRelationship, inContext: backgroundContext, operations: .all, completion: completion)
         }
-        self.changes(changes, inEntityNamed: entityName, predicate: predicate, parent: safeParent, parentRelationship: firstRelationship?.inverseRelationship, inContext: dataStack.mainContext, operations: .all, completion: completion)
     }
 }
+

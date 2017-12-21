@@ -81,6 +81,23 @@ import CoreData
     }
 
     /**
+     Returns a background context perfect for data mutability operations.
+     - parameter operation: The block that contains the created background context.
+     */
+    @objc public func performInNewBackgroundContext(_ operation: @escaping (_ backgroundContext: NSManagedObjectContext) -> Void) {
+        let context = self.newChildContext(type: .privateQueueConcurrencyType, name: "private work context")
+        let contextBlock: @convention(block) () -> Void = {
+            operation(context)
+        }
+        let blockObject: AnyObject = unsafeBitCast(contextBlock, to: AnyObject.self)
+        context.perform(DataStack.performSelectorForBackgroundContext(), with: blockObject)
+    }
+
+    private static func performSelectorForBackgroundContext() -> Selector {
+        return TestCheck.isTesting ? NSSelectorFromString("performBlockAndWait:") : NSSelectorFromString("performBlock:")
+    }
+
+    /**
      The context for the main queue. Please do not use this to mutate data, use `performBackgroundTask`
      instead.
      */
