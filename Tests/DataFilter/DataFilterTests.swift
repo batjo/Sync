@@ -54,6 +54,9 @@ class DataFilterTests: XCTestCase {
         dataStack.performInNewBackgroundContext { backgroundContext in
             self.createUsers(context: backgroundContext)
 
+            try! backgroundContext.parent?.save()
+            try! backgroundContext.parent?.parent?.save()
+
             let before = backgroundContext.objectIDs(inEntityNamed: "User", withAttributesNamed: "remoteID")
             let JSONObjects = try! JSON.from("users.json", bundle: Bundle(for: DataFilterTests.self)) as! [[String: Any]]
             var inserted = 0

@@ -1253,6 +1253,7 @@ class SyncTests: XCTestCase {
         userA.setValue(tagA, forKey: "tag")
 
         try! dataStack.mainContext.save()
+        try! dataStack.mainContext.parent!.save()
 
         XCTAssertEqual(Helper.countForEntity("User", inContext: dataStack.mainContext), 1)
         XCTAssertEqual(Helper.countForEntity("Tag", inContext: dataStack.mainContext), 1)
