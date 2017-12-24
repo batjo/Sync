@@ -263,10 +263,24 @@ import CoreData
      Returns a background context perfect for data mutability operations. Make sure to never use it on the main thread. Use `performBlock` or `performBlockAndWait` to use it.
      */
     @objc public func newBackgroundContext() -> NSManagedObjectContext {
+        let moc = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        moc.mergePolicy = NSMergePolicy(merge: .mergeByPropertyStoreTrumpMergePolicyType)
+        moc.parent = mainContext
+        moc.name = "Main Context Backgound Child"
+        moc.automaticallyMergesChangesFromParent = true
+
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(DataStack.contextDidSaveNotification(_:)),
+                                               name: NSNotification.Name.NSManagedObjectContextDidSave,
+                                               object: moc)
+        return moc
+    }
+
+    @objc public func newChildContext() -> NSManagedObjectContext {
         let moc = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
         moc.mergePolicy = NSMergePolicy(merge: .mergeByPropertyStoreTrumpMergePolicyType)
         moc.parent = mainContext
-        moc.name = "Main Queue Context Child"
+        moc.name = "Main Context Child"
         moc.automaticallyMergesChangesFromParent = true
 
         NotificationCenter.default.addObserver(self,
