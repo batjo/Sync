@@ -236,6 +236,8 @@ import CoreData
         context.undoManager = nil
         context.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
 
+        print("creating new background context")
+
         NotificationCenter.default.addObserver(self, selector: #selector(DataStack.backgroundContextDidSave(_:)), name: .NSManagedObjectContextDidSave, object: context)
 
         return context
@@ -373,6 +375,7 @@ import CoreData
 
     // Can't be private, has to be internal in order to be used as a selector.
     @objc func backgroundContextDidSave(_ notification: Notification) throws {
+        print("backgroundContextDidSave notification")
         if Thread.isMainThread && TestCheck.isTesting == false {
             throw NSError(info: "Background context saved in the main thread. Use context's `performBlock`", previousError: nil)
         } else {
