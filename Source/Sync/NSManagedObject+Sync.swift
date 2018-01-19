@@ -254,7 +254,7 @@ extension NSManagedObject {
                     var safeLocalObjects: [NSManagedObject]?
 
                     if deletedItems.count > 0 {
-                        safeLocalObjects = try managedObjectContext.fetch(request) as? [NSManagedObject] ?? [NSManagedObject]()
+                        safeLocalObjects = try context.fetch(request) as? [NSManagedObject] ?? [NSManagedObject]()
                         for safeObject in safeLocalObjects! {
                             let currentID = safeObject.value(forKey: safeObject.entity.sync_localPrimaryKey())!
                             for deleted in deletedItems {
